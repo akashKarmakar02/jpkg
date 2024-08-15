@@ -273,6 +273,8 @@ func main() {
 	}
 
 	switch args[0] {
+	case "init":
+
 	case "build":
 		if err := compileJava(srcDir, binDir, libDir); err != nil {
 			fmt.Println("Failed to compile:", err)
