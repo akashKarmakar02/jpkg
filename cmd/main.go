@@ -257,12 +257,6 @@ func main() {
 	srcDir := "src"
 	binDir := "bin"
 	libDir := "lib"
-	config, error := config.GetConfig()
-	if error != nil {
-		fmt.Println("Failed to load config: ", error)
-	}
-
-	mainClass := config.MainClass
 
 	// Parse command-line arguments
 	flag.Parse()
@@ -272,9 +266,21 @@ func main() {
 		return
 	}
 
-	switch args[0] {
-	case "init":
+	if args[0] == "init" {
+		if err := config.CreateInitialFiles(); err != nil {
+			fmt.Println("Failed to initialize project:", err)
+		}
+		return
+	}
 
+	configs, error := config.GetConfig()
+	if error != nil {
+		fmt.Println("Failed to load config: ", error)
+	}
+
+	mainClass := configs.MainClass
+
+	switch args[0] {
 	case "build":
 		if err := compileJava(srcDir, binDir, libDir); err != nil {
 			fmt.Println("Failed to compile:", err)
