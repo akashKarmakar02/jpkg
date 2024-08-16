@@ -275,7 +275,9 @@ func main() {
 
 	configs, error := config.GetConfig()
 	if error != nil {
-		fmt.Println("Failed to load config: ", error)
+		err := errors.New("Initialize the project. then try running [jpkg run|jpkg build]")
+		fmt.Println(err)
+		return
 	}
 
 	mainClass := configs.MainClass

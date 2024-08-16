@@ -54,6 +54,6 @@ func CreateInitialFiles() error {
 		return err
 	}
 
-	fmt.Println("Project initialized successfully.")
+	fmt.Println("Project initialized successfully.✨")
 	return nil
 }
