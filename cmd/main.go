@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io"
+	"jpkg/cache"
 	"jpkg/config"
 	"net/http"
 	"os"
@@ -70,8 +71,18 @@ func compileJava(srcDir, binDir, libDir string) error {
 		}
 	}
 
+	// Ensure the binDir and cacheDir directories exist
 	if _, err := os.Stat(binDir); os.IsNotExist(err) {
-		err := os.Mkdir(binDir, os.ModePerm)
+		err := os.MkdirAll(binDir, os.ModePerm)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Ensure the cacheDir exists (if required)
+	cacheDir := ".jpkg/cache"
+	if _, err := os.Stat(cacheDir); os.IsNotExist(err) {
+		err := os.MkdirAll(cacheDir, os.ModePerm)
 		if err != nil {
 			return err
 		}
@@ -255,8 +266,9 @@ func handleGitHubURL(url, libDir string) error {
 
 func main() {
 	srcDir := "src"
-	binDir := "bin"
+	binDir := ".jpkg/bin"
 	libDir := "lib"
+	cacheDir := ".jpkg/cache"
 
 	// Parse command-line arguments
 	flag.Parse()
@@ -275,7 +287,7 @@ func main() {
 
 	configs, error := config.GetConfig()
 	if error != nil {
-		err := errors.New("Initialize the project. then try running [jpkg run|jpkg build]")
+		err := errors.New("initialize the project. then try running [jpkg run|jpkg build]")
 		fmt.Println(err)
 		return
 	}
@@ -292,12 +304,19 @@ func main() {
 			fmt.Println("Failed to create JAR:", err)
 		}
 	case "run":
-		if err := compileJava(srcDir, binDir, libDir); err != nil {
-			fmt.Println("Failed to compile:", err)
-			return
-		}
-		if err := runJava(mainClass, binDir, libDir); err != nil {
-			fmt.Println("Failed to run:", err)
+		if isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir); err == nil && isUptoDate {
+			if err := runJava(mainClass, binDir, libDir); err != nil {
+				fmt.Println("Failed to run:", err)
+			}
+		} else {
+			if err := compileJava(srcDir, binDir, libDir); err != nil {
+				fmt.Println("Failed to compile:", err)
+				return
+			}
+			if err := runJava(mainClass, binDir, libDir); err != nil {
+				fmt.Println("Failed to run:", err)
+			}
+			cache.CopySrcToCache(srcDir, cacheDir)
 		}
 	case "install":
 		if len(args) < 2 {
