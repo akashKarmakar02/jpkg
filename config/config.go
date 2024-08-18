@@ -4,12 +4,20 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/BurntSushi/toml"
 )
 
 type Config struct {
-	MainClass string `toml:"main_class"`
+	MainClass    string `toml:"main_class"`
+	Dependencies map[string]Dependency
+}
+
+type Dependency struct {
+	Origin  string
+	Version string
 }
 
 func GetConfig() (*Config, error) {
@@ -56,4 +64,48 @@ func CreateInitialFiles() error {
 
 	fmt.Println("Project initialized successfully.✨")
 	return nil
+}
+
+func saveConfig(filename string, dependencies string) error {
+	// Read the existing file content
+	content, err := os.ReadFile("amber.toml")
+	if err != nil {
+		return err
+	}
+
+	// Replace the dependencies section with the new one
+	re := regexp.MustCompile(`(?s)\[dependencies\].*?(\n\[|$)`)
+	newContent := re.ReplaceAllString(string(content), dependencies+"$1")
+
+	return os.WriteFile(filename, []byte(newContent), 0644)
+}
+
+func generateDependenciesSection(dependencies map[string]Dependency) string {
+	var sb strings.Builder
+	sb.WriteString("[dependencies]\n")
+	for name, dep := range dependencies {
+		sb.WriteString(fmt.Sprintf(`"%s" = { origin = "%s", version = "%s" }`+"\n", name, dep.Origin, dep.Version))
+	}
+	return sb.String()
+}
+
+func SaveDependency(name, origin, version string) error {
+	config, err := GetConfig()
+	if err != nil {
+		return err
+	}
+
+	if config.Dependencies == nil {
+		config.Dependencies = make(map[string]Dependency)
+	}
+
+	config.Dependencies[name] = Dependency{
+		Origin:  origin,
+		Version: version,
+	}
+
+	// Generate the new dependencies section
+	dependenciesSection := generateDependenciesSection(config.Dependencies)
+
+	return saveConfig("amber.toml", dependenciesSection)
 }

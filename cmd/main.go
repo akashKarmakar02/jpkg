@@ -14,6 +14,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/BurntSushi/toml"
 	"github.com/schollz/progressbar/v3"
 )
 
@@ -103,6 +104,14 @@ func compileJava(srcDir, binDir, libDir string) error {
 }
 
 func createJar(binDir, jarFileName, mainClass, libDir string) error {
+	// Ensure the .jpkg/build directory exists
+	buildDir := filepath.Join(".jpkg", "build")
+	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(buildDir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+
 	// Get the JAR files for the classpath
 	jarFiles, err := getJarFiles(libDir)
 	if err != nil {
@@ -121,8 +130,11 @@ func createJar(binDir, jarFileName, mainClass, libDir string) error {
 	}
 	defer os.Remove(manifestFile)
 
+	// Path to the JAR file in the .jpkg/build directory
+	jarFilePath := filepath.Join(buildDir, jarFileName)
+
 	// Create the JAR file using the `jar` command with the manifest
-	cmd := exec.Command("jar", "cmf", manifestFile, jarFileName, "-C", binDir, ".")
+	cmd := exec.Command("jar", "cmf", manifestFile, jarFilePath, "-C", binDir, ".")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()
@@ -209,6 +221,11 @@ func handleMavenURL(url string, libDir string) error {
 		os.Mkdir(libDir, os.ModePerm)
 	}
 	dest := filepath.Join(libDir, jarFileName)
+
+	if err := config.SaveDependency(fmt.Sprintf("%s/%s", groupID, artifactID), "maven", version); err != nil {
+		return err
+	}
+
 	return downloadFile(artifactID, downloadURL, dest)
 }
 
@@ -261,6 +278,10 @@ func handleGitHubURL(url, libDir string) error {
 		os.Mkdir(libDir, os.ModePerm)
 	}
 	dest := filepath.Join(libDir, jarFileName)
+
+	if err := config.SaveDependency(fmt.Sprintf("%s/%s", user, repo), "github", ""); err != nil {
+		return err
+	}
 	return downloadFile(repo, jarDownloadURL, dest)
 }
 
@@ -309,6 +330,7 @@ func main() {
 				fmt.Println("Failed to run:", err)
 			}
 		} else {
+			cache.CopySrcToCache(srcDir, cacheDir)
 			if err := compileJava(srcDir, binDir, libDir); err != nil {
 				fmt.Println("Failed to compile:", err)
 				return
@@ -316,11 +338,36 @@ func main() {
 			if err := runJava(mainClass, binDir, libDir); err != nil {
 				fmt.Println("Failed to run:", err)
 			}
-			cache.CopySrcToCache(srcDir, cacheDir)
 		}
 	case "install":
 		if len(args) < 2 {
-			fmt.Println("Usage: go run main.go install <url>")
+			if _, err := os.Stat("amber.toml"); os.IsNotExist(err) {
+				fmt.Println("amber.toml file not found")
+				return
+			}
+
+			var config map[string]map[string]map[string]string
+			if _, err := toml.DecodeFile("amber.toml", &config); err != nil {
+				fmt.Println("Failed to load config:", err)
+				return
+			}
+
+			for dep, info := range config["dependencies"] {
+				origin := info["origin"]
+				version := info["version"]
+
+				if origin == "maven" {
+					url := fmt.Sprintf("pkg:maven/%s@%s", dep, version)
+					if err := handleMavenURL(url, libDir); err != nil {
+						fmt.Println("Failed to install from Maven:", err)
+					}
+				} else if origin == "github" {
+					url := fmt.Sprintf("https://github.com/%s", dep)
+					if err := handleGitHubURL(url, libDir); err != nil {
+						fmt.Println("Failed to install from GitHub:", err)
+					}
+				}
+			}
 			return
 		}
 		url := args[1]
