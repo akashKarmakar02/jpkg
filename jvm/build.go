@@ -79,42 +79,35 @@ func CreateJar(binDir, jarFileName, mainClass, libDir string) error {
 		}
 	}
 
-	// Path to the fat JAR file in the .jpkg/build directory
-	fatJarFilePath := filepath.Join(buildDir, jarFileName)
+	// Get the JAR files for the classpath
+	jarFiles, err := getJarFiles(libDir)
+	if err != nil {
+		return err
+	}
+
+	// Convert JAR file paths to relative paths for the manifest
+	relJarFiles := strings.ReplaceAll(jarFiles, string(os.PathSeparator), "/")
+	relJarFilesList := strings.Split(relJarFiles, string(os.PathListSeparator))
+
+	for index, file := range relJarFilesList {
+		absJarPath, _ := filepath.Abs(file)
+		relJarFilesList[index] = absJarPath
+	}
 
 	// Create a temporary manifest file
-	manifestFile := filepath.Join(buildDir, "MANIFEST.MF")
-	manifestContent := fmt.Sprintf("Main-Class: %s\n", mainClass)
+	manifestFile := filepath.Join(binDir, "MANIFEST.MF")
+	manifestContent := fmt.Sprintf("Main-Class: %s\nClass-Path: %s\n", mainClass, strings.Join(relJarFilesList, " "))
 	if err := os.WriteFile(manifestFile, []byte(manifestContent), 0644); err != nil {
 		return err
 	}
 	defer os.Remove(manifestFile)
 
-	// Collect all JAR files from the libDir
-	jarFiles, err := getJarFiles(libDir)
-	if err != nil {
-		return err
-	}
-	fmt.Println(jarFiles)
+	// Path to the JAR file in the .jpkg/build directory
+	jarFilePath := filepath.Join(buildDir, jarFileName)
 
-	// Create the fat JAR
-	cmd := exec.Command("jar", "cfm", fatJarFilePath, manifestFile)
+	// Create the JAR file using the `jar` command with the manifest
+	cmd := exec.Command("jar", "cmf", manifestFile, jarFilePath, "-C", binDir, ".")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-
-	// Add classes from binDir
-	cmd.Args = append(cmd.Args, "-C", binDir, ".")
-
-	// Add classes from all JAR files in libDir
-	for _, jarFile := range strings.Split(jarFiles, string(os.PathListSeparator)) {
-		cmd.Args = append(cmd.Args, "-C", jarFile)
-	}
-
-	// Execute the jar command to create the fat JAR
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to create fat JAR: %w", err)
-	}
-
-	fmt.Println("Fat JAR file created successfully:", fatJarFilePath)
-	return nil
+	return cmd.Run()
 }

@@ -24,7 +24,7 @@ func main() {
 	flag.Parse()
 	args := flag.Args()
 	if len(args) == 0 {
-		fmt.Println("Usage: go run main.go [build|run]")
+		fmt.Println("Usage: jpkg [build|run|init]")
 		return
 	}
 
