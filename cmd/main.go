@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"jpkg/cache"
 	"jpkg/config"
-	downloader "jpkg/download"
+	"jpkg/downloader"
 	"jpkg/jvm"
 	"os"
 	"strings"
