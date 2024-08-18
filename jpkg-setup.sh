@@ -4,11 +4,11 @@
 mkdir -p ~/.amber/bin
 
 # Download the first binary
-curl -L -o ~/.amber/bin/jpkg "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA/jpkg"
+curl -L -o ~/.amber/bin/jpkg "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA02/jpkg"
 chmod +x ~/.amber/bin/jpkg
 
 # Download the second binary
-curl -L -o ~/.amber/bin/jpx "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA/jpx"
+curl -L -o ~/.amber/bin/jpx "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA02/jpx"
 chmod +x ~/.amber/bin/jpx
 
 # Add ~/.amber/bin to PATH in .zshrc (for macOS)
