@@ -60,7 +60,6 @@ func downloadFile(name, url, dest string) error {
 		return err
 	}
 
-	fmt.Println("\nDownload complete")
 	return nil
 }
 
@@ -85,7 +84,7 @@ func HandleMavenURL(url string, libDir string) error {
 	}
 	dest := filepath.Join(libDir, jarFileName)
 
-	if err := config.SaveDependency(fmt.Sprintf("%s/%s", groupID, artifactID), "maven", version); err != nil {
+	if err := config.SaveDependency(fmt.Sprintf("%s/%s", parts[0], artifactID), "maven", version); err != nil {
 		return err
 	}
 
