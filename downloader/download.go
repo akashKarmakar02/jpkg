@@ -20,6 +20,10 @@ type Asset struct {
 	DonwloadUrl string `json:"browser_download_url"`
 }
 
+type DependencyLock struct {
+	Dependencies map[string]string `json:"dependencies"`
+}
+
 type GithubRes struct {
 	Assets []Asset `json:"assets"`
 }
@@ -63,6 +67,39 @@ func downloadFile(name, url, dest string) error {
 	return nil
 }
 
+func writeJSONLockFile(name, jarFileName string) error {
+	lockFile := "dependencies-lock.json"
+	var lock DependencyLock
+
+	// Load existing lock file
+	if _, err := os.Stat(lockFile); err == nil {
+		file, err := os.Open(lockFile)
+		if err != nil {
+			return err
+		}
+		defer file.Close()
+		decoder := json.NewDecoder(file)
+		if err := decoder.Decode(&lock); err != nil {
+			return err
+		}
+	} else {
+		lock.Dependencies = make(map[string]string)
+	}
+
+	// Update the lock with new dependency
+	lock.Dependencies[name] = jarFileName
+
+	// Save the updated lock file
+	file, err := os.Create(lockFile)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+	encoder := json.NewEncoder(file)
+	encoder.SetIndent("", "  ")
+	return encoder.Encode(&lock)
+}
+
 func HandleMavenURL(url string, libDir string) error {
 	// Remove the "pkg:maven/" prefix
 	trimmedURL := strings.TrimPrefix(url, "pkg:maven/")
@@ -77,6 +114,8 @@ func HandleMavenURL(url string, libDir string) error {
 	version := artifactVersionStr[1]
 	jarFileName := fmt.Sprintf("%s-%s.jar", artifactID, version)
 	downloadURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s", groupID, artifactID, version, jarFileName)
+
+	writeJSONLockFile(artifactID, jarFileName)
 
 	// Download the JAR file
 	if _, err := os.Stat(libDir); os.IsNotExist(err) {
@@ -135,6 +174,8 @@ func HandleGitHubURL(url, libDir string) error {
 
 	jarDownloadURL := downloadUrl
 	jarFileName := filepath.Base(jarDownloadURL)
+
+	writeJSONLockFile(repo, jarFileName)
 
 	if _, err := os.Stat(libDir); os.IsNotExist(err) {
 		os.Mkdir(libDir, os.ModePerm)
