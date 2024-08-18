@@ -60,6 +60,7 @@ func main() {
 			}
 		} else {
 			cache.CopySrcToCache(srcDir, cacheDir)
+
 			if err := jvm.CompileJava(srcDir, binDir, libDir); err != nil {
 				fmt.Println("Failed to compile:", err)
 				return

@@ -3,7 +3,9 @@ package cache
 import (
 	"crypto/md5"
 	"encoding/hex"
+	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"path/filepath"
 )
@@ -20,6 +22,34 @@ func computeFileHash(filePath string) (string, error) {
 		return "", err
 	}
 	return hex.EncodeToString(hash.Sum(nil)), nil
+}
+
+func removeAll(dir string) error {
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+
+		if path == dir {
+			// Skip the root directory itself
+			return nil
+		}
+
+		if d.IsDir() {
+			// Remove directory
+			return os.RemoveAll(path)
+		} else {
+			// Remove file
+			return os.Remove(path)
+		}
+	})
+
+	if err != nil {
+		return fmt.Errorf("failed to walk through directory: %w", err)
+	}
+
+	// Optionally, remove the root directory itself
+	return os.Remove(dir)
 }
 
 func IsCacheUpToDate(srcDir, cacheDir string) (bool, error) {
@@ -84,6 +114,7 @@ func CopySrcToCache(srcDir, cacheDir string) error {
 			relPath, _ := filepath.Rel(srcDir, path)
 			destPath := filepath.Join(cacheDir, relPath)
 			destDir := filepath.Dir(destPath)
+			removeAll(destDir)
 			if _, err := os.Stat(destDir); os.IsNotExist(err) {
 				os.MkdirAll(destDir, os.ModePerm)
 			}
