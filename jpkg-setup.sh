@@ -4,12 +4,12 @@
 mkdir -p ~/.amber/bin
 
 # Download the first binary
-curl -L -o ~/.amber/bin/binary1 "https://example.com/path/to/binary1"
-chmod +x ~/.amber/bin/binary1
+curl -L -o ~/.amber/bin/jpkg "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA/jpkg"
+chmod +x ~/.amber/bin/jpkg
 
 # Download the second binary
-curl -L -o ~/.amber/bin/binary2 "https://example.com/path/to/binary2"
-chmod +x ~/.amber/bin/binary2
+curl -L -o ~/.amber/bin/jpx "https://github.com/akashKarmakar02/jpkg/releases/download/0.1.0-ALPHA/jpx"
+chmod +x ~/.amber/bin/jpx
 
 # Add ~/.amber/bin to PATH in .zshrc (for macOS)
 echo 'export PATH="$HOME/.amber/bin:$PATH"' >> ~/.zshrc
