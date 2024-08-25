@@ -22,14 +22,14 @@ func getJarFiles(libDir string) (string, error) {
 	return strings.Join(jars, string(os.PathListSeparator)), err
 }
 
-func RunJava(mainClass, binDir, libDir string) error {
+func RunJava(mainClass, binDir, libDir string) *exec.Cmd {
 	var classpath string
 
 	// Check if the lib directory exists
 	if _, err := os.Stat(libDir); err == nil {
 		jarFiles, err := getJarFiles(libDir)
 		if err != nil {
-			return err
+			return nil
 		}
 		classpath = fmt.Sprintf("%s%s%s", binDir, string(os.PathListSeparator), jarFiles)
 	} else {
@@ -40,5 +40,5 @@ func RunJava(mainClass, binDir, libDir string) error {
 	cmd := exec.Command("java", "-cp", classpath, mainClass)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	return cmd
 }

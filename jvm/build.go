@@ -23,6 +23,27 @@ func getJavaFiles(srcDir string) ([]string, error) {
 	return files, err
 }
 
+func copyDir(src string, dest string) error {
+	return filepath.Walk(src, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		relPath := strings.TrimPrefix(path, src)
+		destPath := filepath.Join(dest, relPath)
+
+		if info.IsDir() {
+			return os.MkdirAll(destPath, info.Mode())
+		} else {
+			data, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			return os.WriteFile(destPath, data, info.Mode())
+		}
+	})
+}
+
 func CompileJava(srcDir, binDir, libDir string) error {
 	javaFiles, err := getJavaFiles(srcDir)
 	if err != nil {
@@ -67,7 +88,20 @@ func CompileJava(srcDir, binDir, libDir string) error {
 	cmd := exec.Command("javac", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	// Copy resources to binDir
+	resourcesDir := "resources"
+	if _, err := os.Stat(resourcesDir); !os.IsNotExist(err) {
+		err = copyDir(resourcesDir, binDir)
+		if err != nil {
+			return fmt.Errorf("failed to copy resources: %w", err)
+		}
+	}
+
+	return nil
 }
 
 func CreateJar(binDir, jarFileName, mainClass, libDir string) error {
