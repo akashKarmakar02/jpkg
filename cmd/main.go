@@ -93,26 +93,31 @@ func main() {
 			fmt.Println("Failed to create JAR:", err)
 		}
 	case "run":
-		if isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir); err == nil && isUptoDate {
-			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			go javaCmd.Run()
-			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
-		} else {
-			cache.CopySrcToCache(srcDir, cacheDir)
-
-			if err := jvm.CompileJava(srcDir, binDir, libDir); err != nil {
-				fmt.Println("Failed to compile:", err)
-				return
-			}
-
-			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-
-			if err != nil && !os.IsNotExist(err) {
-				fmt.Println("Failed to run:", err)
-			}
-			go javaCmd.Run()
-			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+		isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir)
+		if err != nil {
+			fmt.Println("Failed to cache files: ", err)
 		}
+
+		if isUptoDate {
+			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
+			go javaCmd.Run()
+			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+			return
+		}
+
+		cache.CopySrcToCache(srcDir, cacheDir)
+		if err := jvm.CompileJava(srcDir, binDir, libDir); err != nil {
+			fmt.Println("Failed to compile:", err)
+			return
+		}
+
+		javaCmd = jvm.RunJava(mainClass, binDir, libDir)
+
+		if err != nil && !os.IsNotExist(err) {
+			fmt.Println("Failed to run:", err)
+		}
+		go javaCmd.Run()
+		watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
 
 	case "install":
 		if len(args) < 2 {
