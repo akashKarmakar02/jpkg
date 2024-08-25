@@ -16,12 +16,11 @@ import (
 	"github.com/BurntSushi/toml"
 )
 
-// Function to watch for file changes in a separate goroutine
 func watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass string, javaCmd *exec.Cmd) {
 	for {
 		isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir)
 		if err == nil && !isUptoDate {
-			fmt.Println("File changes found. Reloading the app...")
+			fmt.Println("\033[2;37mFile changes found. Reloading the app...\033[0m")
 
 			// Stop the running process
 			if javaCmd != nil && javaCmd.Process != nil {
@@ -33,7 +32,7 @@ func watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass string, javaCmd
 			// Recompile and rerun the Java program
 			cache.CopySrcToCache(srcDir, cacheDir)
 			if err := jvm.CompileJava(srcDir, binDir, libDir); err != nil {
-				fmt.Println("Failed to compile:", err)
+				fmt.Println("\033[2;37mFailed to compile:", err, "\033[0m")
 				return
 			}
 
@@ -44,12 +43,12 @@ func watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass string, javaCmd
 				fmt.Println("Failed to run:", err)
 			} else {
 				go javaCmd.Run()
-				fmt.Println("App reloaded.")
+				fmt.Print("\033[H\033[2J")
 			}
 		}
 
 		// Sleep for a while before checking again
-		time.Sleep(2 * time.Second)
+		time.Sleep(time.Second)
 	}
 }
 
