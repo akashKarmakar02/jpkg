@@ -24,8 +24,17 @@ func watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass string, javaCmd
 
 			// Stop the running process
 			if javaCmd != nil && javaCmd.Process != nil {
-				if err := javaCmd.Process.Kill(); err != nil {
-					fmt.Println("Failed to kill running process:", err)
+				// Check if the process is still running
+				err := javaCmd.Process.Signal(os.Interrupt)
+				if err != nil {
+					if err.Error() != "os: process already finished" {
+						fmt.Println("Failed to kill running process:", err)
+					}
+				} else {
+					// Attempt to kill the process only if it hasn't finished
+					if err := javaCmd.Process.Kill(); err != nil {
+						fmt.Println("Failed to kill running process:", err)
+					}
 				}
 			}
 
@@ -36,15 +45,10 @@ func watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass string, javaCmd
 				return
 			}
 
-			var err error
 			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			if err != nil {
 
-				fmt.Println("Failed to run:", err)
-			} else {
-				go javaCmd.Run()
-				fmt.Print("\033[H\033[2J")
-			}
+			go javaCmd.Run()
+			fmt.Print("\033[H\033[2J")
 		}
 
 		// Sleep for a while before checking again
@@ -100,8 +104,12 @@ func main() {
 
 		if isUptoDate {
 			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			go javaCmd.Run()
-			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+			if len(args) > 1 && args[1] == "--watch" {
+				go javaCmd.Run()
+				watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+				return
+			}
+			javaCmd.Run()
 			return
 		}
 
@@ -116,8 +124,13 @@ func main() {
 		if err != nil && !os.IsNotExist(err) {
 			fmt.Println("Failed to run:", err)
 		}
-		go javaCmd.Run()
-		watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+
+		if len(args) > 1 && args[1] == "--watch" {
+			go javaCmd.Run()
+			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
+			return
+		}
+		javaCmd.Run()
 
 	case "install":
 		if len(args) < 2 {

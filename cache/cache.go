@@ -24,7 +24,7 @@ func computeFileHash(filePath string) (string, error) {
 	return hex.EncodeToString(hash.Sum(nil)), nil
 }
 
-func removeAll(dir string) error {
+func RemoveAll(dir string) error {
 	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, err error) error {
 		if err != nil {
 			return err
@@ -130,7 +130,7 @@ func IsCacheUpToDate(srcDir, cacheDir string) (bool, error) {
 }
 
 func CopySrcToCache(srcDir, cacheDir string) error {
-	removeAll(cacheDir)
+	RemoveAll(cacheDir)
 	err := filepath.Walk(srcDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -164,7 +164,6 @@ func CopySrcToCache(srcDir, cacheDir string) error {
 			relPath, _ := filepath.Rel("resources", path)
 			destPath := filepath.Join(cacheDir, relPath)
 			destDir := filepath.Dir(destPath)
-			removeAll(destDir)
 			if _, err := os.Stat(destDir); os.IsNotExist(err) {
 				os.MkdirAll(destDir, os.ModePerm)
 			}

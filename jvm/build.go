@@ -2,6 +2,7 @@ package jvm
 
 import (
 	"fmt"
+	"jpkg/cache"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -88,6 +89,7 @@ func CompileJava(srcDir, binDir, libDir string) error {
 	cmd := exec.Command("javac", args...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	cache.RemoveAll(binDir)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
