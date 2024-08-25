@@ -95,9 +95,6 @@ func main() {
 	case "run":
 		if isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir); err == nil && isUptoDate {
 			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			if err != nil {
-				fmt.Println("Failed to run:", err)
-			}
 			go javaCmd.Run()
 			watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
 		} else {
@@ -109,7 +106,8 @@ func main() {
 			}
 
 			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			if err != nil {
+
+			if err != nil && !os.IsNotExist(err) {
 				fmt.Println("Failed to run:", err)
 			}
 			go javaCmd.Run()
