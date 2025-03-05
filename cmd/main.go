@@ -10,6 +10,7 @@ import (
 	"jpkg/jvm"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"time"
 
@@ -93,18 +94,41 @@ func main() {
 			fmt.Println("Failed to compile:", err)
 			return
 		}
-		if err := jvm.CreateJar(binDir, "app.jar", mainClass, "lib"); err != nil {
+		if path, err := jvm.CreateJar(binDir, "app.jar", mainClass, "lib"); err != nil {
 			fmt.Println("Failed to create JAR:", err)
+		} else {
+			fmt.Println("\nBuild Successfully.")
+			fmt.Println("Saved file: ", path)
 		}
+
+	case "build-native":
+		if err := jvm.CompileJava(srcDir, binDir, libDir); err != nil {
+			fmt.Println("Failed to compile:", err)
+			return
+		}
+		if path, err := jvm.CreateJar(binDir, "app.jar", mainClass, "lib"); err != nil {
+			fmt.Println("Failed to create JAR:", err)
+		} else {
+			err := jvm.BuildNative(path, args[1:])
+			if err != nil {
+				fmt.Println("Failed to compile native exec: ", err)
+			}
+		}
+
 	case "run":
 		isUptoDate, err := cache.IsCacheUpToDate(srcDir, cacheDir)
 		if err != nil {
 			fmt.Println("Failed to cache files: ", err)
 		}
 
+		if len(args) > 1 && strings.HasSuffix(args[1], ".java") {
+			mainClass = args[1]
+		}
+
 		if isUptoDate {
 			javaCmd = jvm.RunJava(mainClass, binDir, libDir)
-			if len(args) > 1 && args[1] == "--watch" {
+
+			if len(args) > 1 && slices.Contains(args, "--watch") {
 				go javaCmd.Run()
 				watchForChanges(srcDir, binDir, libDir, cacheDir, mainClass, javaCmd)
 				return

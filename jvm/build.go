@@ -1,6 +1,7 @@
 package jvm
 
 import (
+	"errors"
 	"fmt"
 	"jpkg/cache"
 	"os"
@@ -106,22 +107,19 @@ func CompileJava(srcDir, binDir, libDir string) error {
 	return nil
 }
 
-func CreateJar(binDir, jarFileName, mainClass, libDir string) error {
-	// Ensure the .jpkg/build directory exists
-	buildDir := filepath.Join(".jpkg", "build")
+func CreateJar(binDir, jarFileName, mainClass, libDir string) (string, error) {
+	buildDir := filepath.Join(".jpkg", "build", "jar")
 	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
 		if err := os.MkdirAll(buildDir, os.ModePerm); err != nil {
-			return err
+			return "", err
 		}
 	}
 
-	// Get the JAR files for the classpath
 	jarFiles, err := getJarFiles(libDir)
-	if err != nil {
-		return err
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return "", err
 	}
 
-	// Convert JAR file paths to relative paths for the manifest
 	relJarFiles := strings.ReplaceAll(jarFiles, string(os.PathSeparator), "/")
 	relJarFilesList := strings.Split(relJarFiles, string(os.PathListSeparator))
 
@@ -130,20 +128,86 @@ func CreateJar(binDir, jarFileName, mainClass, libDir string) error {
 		relJarFilesList[index] = absJarPath
 	}
 
-	// Create a temporary manifest file
 	manifestFile := filepath.Join(binDir, "MANIFEST.MF")
 	manifestContent := fmt.Sprintf("Main-Class: %s\nClass-Path: %s\n", mainClass, strings.Join(relJarFilesList, " "))
 	if err := os.WriteFile(manifestFile, []byte(manifestContent), 0644); err != nil {
-		return err
+		return "", err
 	}
 	defer os.Remove(manifestFile)
 
-	// Path to the JAR file in the .jpkg/build directory
 	jarFilePath := filepath.Join(buildDir, jarFileName)
 
-	// Create the JAR file using the `jar` command with the manifest
 	cmd := exec.Command("jar", "cmf", manifestFile, jarFilePath, "-C", binDir, ".")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		return "", err
+	}
+
+	return jarFilePath, nil
+}
+
+func BuildNative(jarPath string, args []string) error {
+	buildDir := filepath.Join(".jpkg", "build", "linux")
+	if _, err := os.Stat(buildDir); os.IsNotExist(err) {
+		if err := os.MkdirAll(buildDir, os.ModePerm); err != nil {
+			return err
+		}
+	}
+	command := []string{"native-image", "--no-fallback"}
+	command = append(command, args...)
+
+	cmd := exec.Command(command[0], append(command[1:], "-jar", jarPath, ".jpkg/build/linux/app")...)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	return cmd.Run()
+}
+
+func DetectRequiredModules(jarFilePath string) (string, error) {
+	cmd := exec.Command("jdeps",
+		"--multi-release", "9",
+		"--module-path", os.Getenv("JAVA_HOME")+"/jmods",
+		"--print-module-deps",
+		jarFilePath)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	output, err := cmd.Output()
+	if err != nil {
+		return "", fmt.Errorf("failed to detect required modules: %w", err)
+	}
+
+	modules := strings.TrimSpace(string(output))
+	return modules, nil
+}
+
+func CreateCustomRuntime(outputDir, jarFilePath, modules string) error {
+	if _, err := os.Stat(outputDir); !os.IsNotExist(err) {
+		if err := os.RemoveAll(outputDir); err != nil {
+			return fmt.Errorf("failed to remove existing runtime directory: %w", err)
+		}
+	}
+
+	// Construct the jlink command
+	cmd := exec.Command("jlink",
+		"--module-path", os.Getenv("JAVA_HOME")+"/jmods:"+filepath.Dir(jarFilePath),
+		"--add-modules", modules,
+		"--limit-modules", modules,
+		"--output", outputDir,
+		"--strip-debug",
+		"--verbose",
+		"--compress=2",
+		"--no-header-files",
+		"--no-man-pages",
+	)
+
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to create custom runtime: %w", err)
+	}
+
+	return nil
 }

@@ -37,6 +37,8 @@ func RunJava(mainClass, binDir, libDir string) *exec.Cmd {
 		classpath = binDir
 	}
 
+	classpath = classpath + ":resources"
+
 	cmd := exec.Command("java", "-cp", classpath, mainClass)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

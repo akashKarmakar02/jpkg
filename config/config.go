@@ -33,7 +33,7 @@ func GetConfig() (*Config, error) {
 
 func CreateInitialFiles() error {
 	// Create amber.toml
-	config := Config{MainClass: "Main"}
+	config := Config{MainClass: "Main", Dependencies: map[string]Dependency{}}
 	f, err := os.Create("amber.toml")
 	if err != nil {
 		return err

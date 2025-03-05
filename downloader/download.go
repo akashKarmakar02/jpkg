@@ -113,7 +113,9 @@ func HandleMavenURL(url string, libDir string) error {
 	artifactID := artifactVersionStr[0]
 	version := artifactVersionStr[1]
 	jarFileName := fmt.Sprintf("%s-%s.jar", artifactID, version)
-	downloadURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s", groupID, artifactID, version, jarFileName)
+	// pomFileName := fmt.Sprintf("%s-%s.jar", artifactID, version)
+	jarDownloadURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s", groupID, artifactID, version, jarFileName)
+	// pomDownloadURL := fmt.Sprintf("https://repo1.maven.org/maven2/%s/%s/%s/%s", groupID, artifactID, version, pomFileName)
 
 	writeJSONLockFile(artifactID, jarFileName)
 
@@ -127,7 +129,7 @@ func HandleMavenURL(url string, libDir string) error {
 		return err
 	}
 
-	return downloadFile(artifactID, downloadURL, dest)
+	return downloadFile(artifactID, jarDownloadURL, dest)
 }
 
 // Function to handle GitHub URL
