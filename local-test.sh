@@ -4,7 +4,7 @@
 mkdir -p /home/akash/.amber/bin
 
 # Build the Go binaries
-go build -o jpkg cmd/main.go
+go build -o jpkg ./cmd
 go build -o jpx runner/main.go
 
 # Safely copy the built binaries
