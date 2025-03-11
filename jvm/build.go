@@ -3,7 +3,7 @@ package jvm
 import (
 	"errors"
 	"fmt"
-	"jpkg/cache"
+	"jpkg/pkg/cache"
 	"os"
 	"os/exec"
 	"path/filepath"

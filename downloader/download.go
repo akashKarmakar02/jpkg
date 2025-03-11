@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"jpkg/config"
+	"jpkg/pkg/config"
 	"net/http"
 	"os"
 	"path/filepath"

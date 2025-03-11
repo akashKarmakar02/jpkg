@@ -20,7 +20,7 @@ type Dependency struct {
 	Version string
 }
 
-func GetConfig() (*Config, error) {
+func GetTomlConfig() (*Config, error) {
 	var config Config
 	if _, err := os.Stat("amber.toml"); os.IsNotExist(err) {
 		return nil, fmt.Errorf("amber.toml file not found")
@@ -90,7 +90,7 @@ func generateDependenciesSection(dependencies map[string]Dependency) string {
 }
 
 func SaveDependency(name, origin, version string) error {
-	config, err := GetConfig()
+	config, err := GetTomlConfig()
 	if err != nil {
 		return err
 	}
